@@ -138,6 +138,9 @@ export async function render_response({
 						.map(({ node }) => `import(${s(node.entry)})`)
 						.join(',\n\t\t\t\t\t\t')}
 					],
+					legacy_nodes: [
+						${(branch || []).map(({ node }) => `${s(node.legacy)}`).join(',\n\t\t\t\t\t\t')},
+					],
 					page: {
 						host: ${page && page.host ? s(page.host) : 'location.host'}, // TODO this is redundant
 						path: ${page && page.path ? try_serialize(page.path, error => {
@@ -151,6 +154,11 @@ export async function render_response({
 				}` : 'null'}
 			});
 		</script>`;
+	}
+
+	if (options.entry_legacy) {
+		init = `${init}
+		<script type="module">!function(){try{new Function("m","return import(m)")}catch(o){console.warn("vite: loading legacy build because dynamic import is unsupported, syntax error above should be ignored");var e=document.getElementById("vite-legacy-polyfill"),n=document.createElement("script");n.src=e.src,n.onload=function(){System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))},document.body.appendChild(n)}}();</script>`;
 	}
 
 	if (options.service_worker) {
@@ -201,10 +209,26 @@ export async function render_response({
 		headers['permissions-policy'] = 'interest-cohort=()';
 	}
 
+	let legacy_scripts = '';
+	if (options.entry_legacy) {
+		legacy_scripts = [
+			'<script nomodule>!function(){var e=document,t=e.createElement("script");if(!("noModule"in t)&&"onbeforeload"in t){var n=!1;e.addEventListener("beforeload",(function(e){if(e.target===t)n=!0;else if(!e.target.hasAttribute("nomodule")||!n)return;e.preventDefault()}),!0),t.type="module",t.src=".",e.head.appendChild(t),t.remove()}}();</script>',
+			`<script nomodule id="vite-legacy-polyfill" src=${s(
+				options.entry_legacy.polyfills
+			)}></script>`,
+			`<script nomodule id="vite-legacy-entry" data-src="${s(
+				options.entry_legacy.file
+			)}">System.import(${s(
+				options.entry_legacy.file
+			)}).then(function (m){m.start(window.__KIT_DATA__);});
+		</script>`
+		].join('\n\t\t');
+	}
+
 	return {
 		status,
 		headers,
-		body: options.template({ head, body })
+		body: options.template({ head, body, legacy_scripts })
 	};
 }
 

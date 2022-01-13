@@ -12,5 +12,9 @@
 		"@sveltejs/adapter-netlify": "workspace:*",
 		"@sveltejs/kit": "workspace:*",
 		"svelte": "^3.44.0"
+	},
+	"dependencies": {
+		"custom-event-polyfill": "^1.0.7",
+		"whatwg-fetch": "^3.6.2"
 	}
 }

@@ -13,6 +13,7 @@ import { create_app } from '../create_app/index.js';
 import create_manifest_data from '../create_manifest_data/index.js';
 import { SVELTE_KIT } from '../constants.js';
 import { copy_assets, posixify, resolve_entry } from '../utils.js';
+import legacy from '@vitejs/plugin-legacy';
 
 /** @param {any} value */
 const s = (value) => JSON.stringify(value);
@@ -96,6 +97,7 @@ async function build_client({
 	output_dir,
 	client_entry_file
 }) {
+	console.log('build client');
 	create_app({
 		manifest_data: manifest,
 		output: build_dir,
@@ -137,6 +139,20 @@ async function build_client({
 		}
 	};
 
+	let plugins = [
+		svelte({
+			extensions: config.extensions,
+			emitCss: !config.kit.amp,
+			compilerOptions: {
+				hydratable: !!config.kit.hydrate
+			}
+		})
+	];
+
+	if (config.kit.legacy) {
+		plugins = [...plugins, legacy(config.kit.legacy)];
+	}
+
 	// don't warn on overriding defaults
 	const [modified_vite_config] = deep_merge(default_config, vite_config);
 
@@ -166,15 +182,7 @@ async function build_client({
 				$lib: config.kit.files.lib
 			}
 		},
-		plugins: [
-			svelte({
-				extensions: config.extensions,
-				emitCss: !config.kit.amp,
-				compilerOptions: {
-					hydratable: !!config.kit.hydrate
-				}
-			})
-		]
+		plugins
 	});
 
 	print_config_conflicts(conflicts, 'kit.vite.', 'build_client');
@@ -217,6 +225,7 @@ async function build_server(
 	client_manifest,
 	runtime
 ) {
+	console.log('build server');
 	let hooks_file = resolve_entry(config.kit.files.hooks);
 	if (!hooks_file || !fs.existsSync(hooks_file)) {
 		hooks_file = path.resolve(cwd, `${SVELTE_KIT}/build/hooks.js`);
@@ -280,6 +289,36 @@ async function build_server(
 		};
 	});
 
+	/** @type {(filename: string) => string} */
+	const make_legacy_file_name = (file) => {
+		const f = file.split('.');
+		return `${f.slice(0, f.length - 1).join('.')}-legacy.${f.slice(f.length - 1)}`;
+	};
+
+	console.log(client_manifest);
+
+	if (config.kit.legacy) {
+		['\x00vite/legacy-polyfills', ...manifest.components.map(make_legacy_file_name)].forEach(
+			(file) => {
+				console.log(file, client_manifest[file]);
+				if (client_manifest[file]) {
+					const js_deps = new Set();
+
+					find_deps(file, js_deps, new Set());
+
+					const js_legacy = Array.from(js_deps);
+
+					metadata_lookup[file] = {
+						entry: client_manifest[file].file,
+						css: [],
+						js: js_legacy,
+						styles: []
+					};
+				}
+			}
+		);
+	}
+
 	/** @type {Set<string>} */
 	const entry_js = new Set();
 	/** @type {Set<string>} */
@@ -287,6 +326,8 @@ async function build_server(
 
 	find_deps(client_entry_file, entry_js, entry_css);
 
+	const legacy_entry_file = make_legacy_file_name(client_entry_file);
+	// console.log(legacy_entry_file, client_manifest['vite/legacy-polyfills']);
 	// prettier-ignore
 	fs.writeFileSync(
 		app_file,
@@ -297,9 +338,10 @@ async function build_server(
 			import { set_prerendering } from './runtime/env.js';
 			import * as user_hooks from ${s(app_relative(hooks_file))};
 
-			const template = ({ head, body }) => ${s(fs.readFileSync(config.kit.files.template, 'utf-8'))
+			const template = ({ head, body, legacy_scripts = '' }) => ${s(fs.readFileSync(config.kit.files.template, 'utf-8'))
 				.replace('%svelte.head%', '" + head + "')
-				.replace('%svelte.body%', '" + body + "')};
+				.replace('%svelte.body%', '" + body + "')
+				.replace('%svelte.legacy_scripts%', '" + legacy_scripts + "')};
 
 			let options = null;
 
@@ -321,6 +363,12 @@ async function build_server(
 						css: [${Array.from(entry_css).map(dep => 'assets + ' + s(prefix + dep))}],
 						js: [${Array.from(entry_js).map(dep => 'assets + ' + s(prefix + dep))}]
 					},
+					entry_legacy: ${config.kit.legacy ? `{
+						file: assets + ${s(prefix + client_manifest[legacy_entry_file].file)},
+						css: [],
+						js: [],
+						polyfills: assets + ${s(prefix + client_manifest['\x00vite/legacy-polyfills'].file)}
+					},` : 'null,'}
 					fetched: undefined,
 					floc: ${config.kit.floc},
 					get_component_path: id => assets + ${s(prefix)} + entry_lookup[id],
@@ -411,6 +459,12 @@ async function build_server(
 			};
 
 			const metadata_lookup = ${s(metadata_lookup)};
+			${config.kit.legacy ?
+				`\nconst make_legacy_file_name = (filename) => {
+					let f = filename.split(".");
+					let end = f.pop();
+					return f.join(".").concat("-legacy.", end);
+				}\n` : ''}
 
 			async function load_component(file) {
 				const { entry, css, js, styles } = metadata_lookup[file];
@@ -419,7 +473,8 @@ async function build_server(
 					entry: assets + ${s(prefix)} + entry,
 					css: css.map(dep => assets + ${s(prefix)} + dep),
 					js: js.map(dep => assets + ${s(prefix)} + dep),
-					styles
+					styles,
+					legacy: ${config.kit.legacy ? `assets + ${s(prefix)} + metadata_lookup[make_legacy_file_name(file)]["entry"]` : '[]'}
 				};
 			}
 

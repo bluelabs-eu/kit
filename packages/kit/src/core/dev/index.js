@@ -305,6 +305,9 @@ async function create_plugin(config, dir, cwd, get_manifest) {
 		}
 	};
 
+	// NOT SURE WHAT TO DO HERE
+	// WE NEED TO PASS A LIST OF entry_legacy PATHS BUT NO IDEA HOW TO GENERATE THEM HERE
+
 	/**
 	 * @param {vite.ViteDevServer} vite
 	 */
@@ -394,6 +397,12 @@ async function create_plugin(config, dir, cwd, get_manifest) {
 							file: `/${SVELTE_KIT}/dev/runtime/internal/start.js`,
 							css: [],
 							js: []
+						},
+						entry_legacy: {
+							file: `/${SVELTE_KIT}/dev/runtime/internal/start.js`,
+							css: [],
+							js: [],
+							polyfills: ''
 						},
 						floc: config.kit.floc,
 						get_stack: (error) => {

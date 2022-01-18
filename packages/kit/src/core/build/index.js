@@ -97,7 +97,7 @@ async function build_client({
 	output_dir,
 	client_entry_file
 }) {
-	console.log('build client');
+	// console.log('build client');
 	create_app({
 		manifest_data: manifest,
 		output: build_dir,
@@ -225,7 +225,7 @@ async function build_server(
 	client_manifest,
 	runtime
 ) {
-	console.log('build server');
+	// console.log('build server');
 	let hooks_file = resolve_entry(config.kit.files.hooks);
 	if (!hooks_file || !fs.existsSync(hooks_file)) {
 		hooks_file = path.resolve(cwd, `${SVELTE_KIT}/build/hooks.js`);
@@ -295,12 +295,12 @@ async function build_server(
 		return `${f.slice(0, f.length - 1).join('.')}-legacy.${f.slice(f.length - 1)}`;
 	};
 
-	console.log(client_manifest);
+	// console.log(client_manifest);
 
 	if (config.kit.legacy) {
 		['\x00vite/legacy-polyfills', ...manifest.components.map(make_legacy_file_name)].forEach(
 			(file) => {
-				console.log(file, client_manifest[file]);
+				// console.log(file, client_manifest[file]);
 				if (client_manifest[file]) {
 					const js_deps = new Set();
 

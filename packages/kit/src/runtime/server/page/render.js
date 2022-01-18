@@ -108,6 +108,8 @@ export async function render_response({
 	/** @type {string} */
 	let init = '';
 
+	// console.log('render response', include_js, options.entry_legacy);
+
 	if (options.amp) {
 		init = `
 		<style amp-boilerplate>body{-webkit-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-moz-animation:-amp-start 8s steps(1,end) 0s 1 normal both;-ms-animation:-amp-start 8s steps(1,end) 0s 1 normal both;animation:-amp-start 8s steps(1,end) 0s 1 normal both}@-webkit-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-moz-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-ms-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@-o-keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}@keyframes -amp-start{from{visibility:hidden}to{visibility:visible}}</style>
@@ -118,47 +120,57 @@ export async function render_response({
 			: '';
 	} else if (include_js) {
 		// prettier-ignore
-		init = `<script type="module">
-			import { start } from ${s(options.entry.file)};
-			start({
-				target: ${options.target ? `document.querySelector(${s(options.target)})` : 'document.body'},
-				paths: ${s(options.paths)},
-				session: ${try_serialize($session, (error) => {
-					throw new Error(`Failed to serialize session data: ${error.message}`);
-				})},
-				host: ${page && page.host ? s(page.host) : 'location.host'},
-				route: ${!!page_config.router},
-				spa: ${!page_config.ssr},
-				trailing_slash: ${s(options.trailing_slash)},
-				hydrate: ${page_config.ssr && page_config.hydrate ? `{
-					status: ${status},
-					error: ${serialize_error(error)},
-					nodes: [
-						${(branch || [])
-						.map(({ node }) => `import(${s(node.entry)})`)
-						.join(',\n\t\t\t\t\t\t')}
-					],
-					legacy_nodes: [
-						${(branch || []).map(({ node }) => `${s(node.legacy)}`).join(',\n\t\t\t\t\t\t')},
-					],
-					page: {
-						host: ${page && page.host ? s(page.host) : 'location.host'}, // TODO this is redundant
-						path: ${page && page.path ? try_serialize(page.path, error => {
-							throw new Error(`Failed to serialize page.path: ${error.message}`);
-						}) : null},
-						query: new URLSearchParams(${page && page.query ? s(page.query.toString()) : ''}),
-						params: ${page && page.params ? try_serialize(page.params, error => {
-							throw new Error(`Failed to serialize page.params: ${error.message}`);
-						}) : null}
+		init = `<script>window.__KIT_DATA__ = {
+			target: ${options.target ? `${s(options.target)}` : 'body'},
+			paths: ${s(options.paths)},
+			session: ${try_serialize($session, (error) => {
+				throw new Error(`Failed to serialize session data: ${error.message}`);
+			})},
+			host: ${page && page.host ? s(page.host) : 'location.host'},
+			route: ${!!page_config.router},
+			spa: ${!page_config.ssr},
+			trailing_slash: ${s(options.trailing_slash)},
+			hydrate: ${
+				page_config.ssr && page_config.hydrate
+					? `{
+				status: ${status},
+				error: ${serialize_error(error)},
+				nodes: [
+					${(branch || []).map(({ node }) => `${s(node.entry)}`).join(',\n\t\t\t\t\t\t')}
+				],
+				legacy_nodes: [
+					${(branch || []).map(({ node }) => `${s(node.legacy)}`).join(',\n\t\t\t\t\t\t')},
+				],
+				page: {
+					host: ${page && page.host ? s(page.host) : 'location.host'}, // TODO this is redundant
+					path: ${
+						page && page.path
+							? try_serialize(page.path, (error) => {
+									throw new Error(`Failed to serialize page.path: ${error.message}`);
+							  })
+							: null
+					},
+					query: ${page && page.query ? s(page.query.toString()) : ''},
+					params: ${
+						page && page.params
+							? try_serialize(page.params, (error) => {
+									throw new Error(`Failed to serialize page.params: ${error.message}`);
+							  })
+							: null
 					}
-				}` : 'null'}
-			});
+				}
+			}`
+					: 'null'
+			}
+		}</script>\n`;
+		init += `<script type="module">
+			import { start } from ${s(options.entry.file)};
+			start(window.__KIT_DATA__);
 		</script>`;
-	}
-
-	if (options.entry_legacy) {
-		init = `${init}
-		<script type="module">!function(){try{new Function("m","return import(m)")}catch(o){console.warn("vite: loading legacy build because dynamic import is unsupported, syntax error above should be ignored");var e=document.getElementById("vite-legacy-polyfill"),n=document.createElement("script");n.src=e.src,n.onload=function(){System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))},document.body.appendChild(n)}}();</script>`;
+		if (options.entry_legacy) {
+			init = `${init}
+			<script type="module">!function(){try{new Function("m","return import(m)")}catch(o){console.warn("vite: loading legacy build because dynamic import is unsupported, syntax error above should be ignored");var e=document.getElementById("vite-legacy-polyfill"),n=document.createElement("script");n.src=e.src,n.onload=function(){System.import(document.getElementById('vite-legacy-entry').getAttribute('data-src'))},document.body.appendChild(n)}}();</script>`;
+		}
 	}
 
 	if (options.service_worker) {
@@ -220,7 +232,7 @@ export async function render_response({
 				options.entry_legacy.file
 			)}">System.import(${s(
 				options.entry_legacy.file
-			)}).then(function (m){m.start(window.__KIT_DATA__);});
+			)}).then(function (m){console.log("starting", window.__KIT_DATA__);m.start(window.__KIT_DATA__);});
 		</script>`
 		].join('\n\t\t');
 	}

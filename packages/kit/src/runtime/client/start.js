@@ -35,7 +35,7 @@ export async function start({ paths, target, session, host, route, spa, trailing
 	const renderer = new Renderer({
 		Root,
 		fallback,
-		target,
+		target: document.querySelector(target) ?? document.body,
 		session,
 		host
 	});
@@ -51,9 +51,11 @@ export async function start({ paths, target, session, host, route, spa, trailing
 
 	init(router);
 	set_paths(paths);
-
+	// if (hydrate) await renderer.start(hydrate);
 	if (hydrate) {
+		// console.log(hydrate);
 		if (import.meta.env.LEGACY) {
+			// console.log('is legacy');
 			hydrate.nodes = hydrate.legacy_nodes;
 		}
 

@@ -3,10 +3,13 @@
 	import Nav from '$lib/Nav.svelte';
 	import PreloadingIndicator from '$lib/PreloadingIndicator.svelte';
 	import ThemeToggler from '$lib/ThemeToggler.svelte';
+import { onMount } from 'svelte';
 	import '../app.css';
 
 
 	$: section = $page.path.split('/')[1];
+	console.log("layout scripted")
+	onMount(()=>console.log("mounted"))
 </script>
 
 <Nav {section}/>

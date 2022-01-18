@@ -5,13 +5,18 @@ export default {
 		adapter: netlify(),
 		target: '#svelte',
 		legacy: {
-			targets: ['ie >= 11'],
+			targets: ['defaults', 'not IE 11'],
 			additionalLegacyPolyfills: [
 				'custom-event-polyfill',
 				'core-js/modules/es.promise.js',
 				'whatwg-fetch',
 				'regenerator-runtime/runtime'
 			]
+		},
+		vite: {
+			build: {
+				minify: false
+			}
 		}
 	}
 };

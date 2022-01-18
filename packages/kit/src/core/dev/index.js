@@ -398,12 +398,12 @@ async function create_plugin(config, dir, cwd, get_manifest) {
 							css: [],
 							js: []
 						},
-						entry_legacy: {
-							file: `/${SVELTE_KIT}/dev/runtime/internal/start.js`,
-							css: [],
-							js: [],
-							polyfills: ''
-						},
+						// entry_legacy: {
+						// 	file: `/${SVELTE_KIT}/dev/runtime/internal/start.js`,
+						// 	css: [],
+						// 	js: [],
+						// 	polyfills: ''
+						// },
 						floc: config.kit.floc,
 						get_stack: (error) => {
 							vite.ssrFixStacktrace(error);

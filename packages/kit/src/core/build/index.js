@@ -298,25 +298,27 @@ async function build_server(
 	// console.log(client_manifest);
 
 	if (config.kit.legacy) {
-		['\x00vite/legacy-polyfills', ...manifest.components.map(make_legacy_file_name)].forEach(
-			(file) => {
-				// console.log(file, client_manifest[file]);
-				if (client_manifest[file]) {
-					const js_deps = new Set();
+		[
+			'\x00vite/legacy-polyfills',
+			'vite/legacy-polyfills',
+			...manifest.components.map(make_legacy_file_name)
+		].forEach((file) => {
+			// console.log(file, client_manifest[file]);
+			if (client_manifest[file]) {
+				const js_deps = new Set();
 
-					find_deps(file, js_deps, new Set());
+				find_deps(file, js_deps, new Set());
 
-					const js_legacy = Array.from(js_deps);
+				const js_legacy = Array.from(js_deps);
 
-					metadata_lookup[file] = {
-						entry: client_manifest[file].file,
-						css: [],
-						js: js_legacy,
-						styles: []
-					};
-				}
+				metadata_lookup[file] = {
+					entry: client_manifest[file].file,
+					css: [],
+					js: js_legacy,
+					styles: []
+				};
 			}
-		);
+		});
 	}
 
 	/** @type {Set<string>} */
@@ -367,7 +369,7 @@ async function build_server(
 						file: assets + ${s(prefix + client_manifest[legacy_entry_file].file)},
 						css: [],
 						js: [],
-						polyfills: assets + ${s(prefix + client_manifest['\x00vite/legacy-polyfills'].file)}
+						polyfills: assets + ${s(prefix + (client_manifest['vite/legacy-polyfills']||client_manifest['\x00vite/legacy-polyfills']).file)}
 					},` : 'null,'}
 					fetched: undefined,
 					floc: ${config.kit.floc},

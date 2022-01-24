@@ -232,7 +232,7 @@ export async function render_response({
 				options.entry_legacy.file
 			)}">System.import(${s(
 				options.entry_legacy.file
-			)}).then(function (m){console.log("starting", window.__KIT_DATA__);m.start(window.__KIT_DATA__);});
+			)}).then(function (m){m.start(window.__KIT_DATA__);});
 		</script>`
 		].join('\n\t\t');
 	}
